@@ -166,7 +166,7 @@ class MainWindow(QMainWindow):
         self.serailBaudrateCombobox.addItem("38400")
         self.serailBaudrateCombobox.addItem("57600")
         self.serailBaudrateCombobox.addItem("115200")
-        self.serailBaudrateCombobox.setCurrentIndex(4)
+        self.serailBaudrateCombobox.setCurrentIndex(0)
         self.serailBaudrateCombobox.setEditable(True)
         self.serailBytesCombobox = ComboBox()
         self.serailBytesCombobox.addItem("5")
@@ -245,6 +245,65 @@ class MainWindow(QMainWindow):
         settingLayout.setStretch(2, 2.5)
 
         # right functional layout
+
+
+        #self begin
+        checkWidget = QGroupBox("基本检查");
+        checkWidgetLayout = QVBoxLayout();
+        checkWidget.setLayout(checkWidgetLayout)
+        checkWidgetLayout.addWidget(QPushButton("check uvwz"))
+
+        signalU = QCheckBox("U")
+        signalV = QCheckBox("V")
+        signalW = QCheckBox("W")
+        signalZ = QCheckBox("Z")
+
+        signalLayout = QHBoxLayout()
+        signalLayout.addWidget(signalU)
+        signalLayout.addWidget(signalV)
+        signalLayout.addWidget(signalW)
+        signalLayout.addWidget(signalZ)
+
+        signalWidget = QWidget()
+        signalWidget.setLayout(signalLayout)
+        checkWidgetLayout.addWidget(signalWidget)
+
+        errorLabel = QLabel("未连接")
+        errorLayout = QHBoxLayout()
+        errorLayout.addWidget(QLabel("当前状态："))
+        errorLayout.addWidget(errorLabel)
+        errorLayout.addStretch(1)
+        checkWidgetLayout.addLayout(errorLayout)
+
+        sendFunctionalLayout.addWidget(checkWidget)
+
+
+        runWidget = QGroupBox("运行测试")
+        runWidgetLayout = QVBoxLayout()
+        runWidget.setLayout(runWidgetLayout)
+
+        slowLayout = QHBoxLayout()
+        midLayout=QHBoxLayout()
+        fastLayout=QHBoxLayout()
+
+        slowLayout.addWidget(QLineEdit("200"))
+        slowLayout.addWidget(QPushButton("运行"))
+
+        runWidgetLayout.addLayout(slowLayout)
+        midLayout.addWidget(QLineEdit("1000"))
+        midLayout.addWidget(QPushButton("运行"))
+        runWidgetLayout.addLayout(midLayout)
+
+        fastLayout.addWidget(QLineEdit("2000"))
+        fastLayout.addWidget(QPushButton("运行"))
+        runWidgetLayout.addLayout(fastLayout)
+
+        sendFunctionalLayout.addWidget(runWidget)
+
+        #self end
+
+
+
         self.filePathWidget = QLineEdit()
         self.openFileButton = QPushButton("Open File")
         self.sendFileButton = QPushButton("Send File")
@@ -260,8 +319,8 @@ class MainWindow(QMainWindow):
         sendFunctionalLayout.addWidget(self.clearHistoryButton)
         sendFunctionalLayout.addWidget(self.addButton)
         sendFunctionalLayout.addStretch(1)
-        self.isHideFunctinal = True
-        self.hideFunctional()
+        self.isHideFunctinal = False
+        self.showFunctional()
 
         # main window
         self.statusBarStauts = QLabel()
@@ -656,14 +715,17 @@ class MainWindow(QMainWindow):
 
     def programStartGetSavedParameters(self):
         paramObj = parameters.ParametersToSave()
-        try:
-            f = open(parameters.configFilePath, "rb")
-            paramObj = pickle.load( f)
-            paramObj.sendHistoryList = pickle.load(f)
-            f.close()
-        except Exception as e:
-            f = open(parameters.configFilePath, "wb")
-            f.close()
+        useDefultConfig=False
+        if not useDefultConfig:
+            try:
+                f = open(parameters.configFilePath, "rb")
+                paramObj = pickle.load( f)
+                paramObj.sendHistoryList = pickle.load(f)
+                f.close()
+            except Exception as e:
+                f = open(parameters.configFilePath, "wb")
+                f.close()
+
         self.serailBaudrateCombobox.setCurrentIndex(paramObj.baudRate)
         self.serailBytesCombobox.setCurrentIndex(paramObj.dataBytes)
         self.serailParityCombobox.setCurrentIndex(paramObj.parity)

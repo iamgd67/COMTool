@@ -32,7 +32,7 @@ strClearReceive = "ClearReceive"
 strAdd = "+"
 strFunctionalSend = "Functional Send"
 strSendFile = "Send File"
-strBaudRateDefault = "115200"
+strBaudRateDefault = "9600"
 strOpenFailed = "Open Failed"
 strOpenReady = "Open Ready"
 strClosed = "Closed"
@@ -64,17 +64,17 @@ else:
 
 
 class ParametersToSave:
-    baudRate = 4
+    baudRate = 0
     dataBytes = 3
     parity = 0
     stopBits = 0
-    receiveAscii = True
+    receiveAscii = False
     receiveAutoLinefeed = False
     receiveAutoLindefeedTime = "200"
-    sendAscii = True
+    sendAscii = False
     sendScheduled = False
     sendScheduledTime = "300"
-    useCRLF = True
+    useCRLF = False
     skin = 2
     rts  = 0
     dtr  = 0
