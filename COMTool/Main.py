@@ -486,7 +486,10 @@ class MainWindow(QMainWindow):
                 # print(self.sendArea.toPlainText())
                 # print("send:",data)
                 self.sendCount += len(data)
-                self.com.write(data)
+                for c in data:
+                    self.com.write(bytes([c]))
+                    time.sleep(0.01)
+
                 data = self.sendArea.toPlainText()
                 self.sendHistoryFindDelete(data)
                 self.sendHistory.insertItem(0,data)
