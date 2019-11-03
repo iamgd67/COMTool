@@ -320,6 +320,21 @@ class MainWindow(QMainWindow):
         checkWidget.setLayout(checkWidgetLayout)
         checkWidgetLayout.addWidget(QPushButton("check uvwz"))
 
+        setPowerLayout=QHBoxLayout()
+
+        setPowerLayout.addWidget(QLineEdit())
+        setPowerLayout.addWidget(QPushButton("设置最大电压"))
+        setPowerLayout.setStretch(1,1)
+        setPowerLayout.setStretch(2,1)
+        checkWidgetLayout.addLayout(setPowerLayout)
+
+
+        infoW=QGroupBox("info")
+        infoWLayout=QVBoxLayout()
+        infoW.setLayout(infoWLayout)
+
+
+
         signalU = QCheckBox("U")
         signalV = QCheckBox("V")
         signalW = QCheckBox("W")
@@ -333,14 +348,16 @@ class MainWindow(QMainWindow):
 
         signalWidget = QWidget()
         signalWidget.setLayout(signalLayout)
-        checkWidgetLayout.addWidget(signalWidget)
+        infoWLayout.addWidget(signalWidget)
 
         errorLabel = QLabel("未连接")
         errorLayout = QHBoxLayout()
         errorLayout.addWidget(QLabel("当前状态："))
         errorLayout.addWidget(errorLabel)
         errorLayout.addStretch(1)
-        checkWidgetLayout.addLayout(errorLayout)
+        infoWLayout.addLayout(errorLayout)
+
+        sendReceiveLayout.addWidget(infoW)
 
         sendFunctionalLayout.addWidget(serialSettingsGroupBox)
         sendFunctionalLayout.addWidget(checkWidget)
