@@ -8,17 +8,19 @@ except ImportError:
     from COMTool.Combobox import ComboBox
 
 # from COMTool.wave import Wave
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import pyqtSignal, Qt, QMargins
 from PyQt5.QtWidgets import (QApplication, QWidget, QToolTip, QPushButton, QMessageBox, QDesktopWidget, QMainWindow,
                              QVBoxLayout, QHBoxLayout, QGridLayout, QTextEdit, QLabel, QRadioButton, QCheckBox,
                              QLineEdit, QGroupBox, QSplitter, QFileDialog)
-from PyQt5.QtGui import QIcon, QFont, QTextCursor, QPixmap
+from PyQt5.QtGui import QIcon, QFont, QTextCursor, QPixmap, QBrush, QColor
 from PyQt5.QtChart import *
+from PyQt5.QtChart import QChartView
 import serial
 import serial.tools.list_ports
 import threading
 import time
 import binascii, re
+
 try:
     import cPickle as pickle
 except ImportError:
@@ -80,6 +82,7 @@ class MainWindow(QMainWindow):
         self.settingWidget.setProperty("class", "settingWidget")
         self.receiveSendWidget = QSplitter(Qt.Vertical)
         self.functionalWiget = QWidget()
+        self.functionalWiget.setMaximumWidth(280)
         settingLayout = QVBoxLayout()
         sendReceiveLayout = QVBoxLayout()
         sendFunctionalLayout = QVBoxLayout()
@@ -91,7 +94,7 @@ class MainWindow(QMainWindow):
         mainLayout.addWidget(self.receiveSendWidget)
         mainLayout.addWidget(self.functionalWiget)
         mainLayout.setStretch(0, 3)
-        mainLayout.setStretch(1, 1)
+        mainLayout.setStretch(1, 10)
         mainLayout.setStretch(2, 4)
         menuLayout = QHBoxLayout()
         mainWidget.setLayout(mainLayout)
@@ -128,6 +131,9 @@ class MainWindow(QMainWindow):
         # menuLayout.addWidget(self.waveButton)
         menuLayout.addWidget(self.aboutButton)
         self.aboutButton.hide()
+        self.debug = QPushButton("debug")
+        #debug.setProperty("class","menuItem")
+        menuLayout.addWidget(self.debug)
         menuLayout.addStretch(0)
         menuLayout.addWidget(self.encodingCombobox)
         self.encodingCombobox.hide()
@@ -136,6 +142,10 @@ class MainWindow(QMainWindow):
         # widgets receive and send area
         self.receiveArea = QTextEdit()
         self.sendArea = QTextEdit()
+        self.sendArea.setMinimumHeight(30)
+        self.sendArea.setMaximumHeight(80)
+        self.receiveArea.setMinimumHeight(30)
+        self.receiveArea.setMaximumHeight(80)
         self.clearReceiveButtion = QPushButton(parameters.strClearReceive)
         self.sendButtion = QPushButton(parameters.strSend)
         self.sendHistory = ComboBox()
@@ -148,12 +158,54 @@ class MainWindow(QMainWindow):
         buttonLayout.addWidget(self.sendButtion)
         sendAreaWidgetsLayout.addWidget(self.sendArea)
         sendAreaWidgetsLayout.addLayout(buttonLayout)
+
+        self.receiveArea.hide()
+        self.sendArea.hide()
+        self.sendButtion.hide()
+        self.clearReceiveButtion.hide()
+
+        speedChart = QChart()
+        speedChart.setBackgroundBrush(QBrush(QColor(0x21, 0x21, 0x21)))
+        speedChart.legend().hide()
+
+        # speedChart.setPlotAreaBackgroundBrush(QBrush(QColor(0x21,0x21,0x21)))
+        # speedChart.setPlotAreaBackgroundVisible(True)
+
+        self.speedChartView = QChartView(speedChart)
+        speedChart.setMargins(QMargins(0, 0, 0, 0))
+
+        self.seriesRealSpeed = QLineSeries()
+        self.seriesRealSpeed.setName("real")
+        self.seriesRealSpeed.append(0, 1)
+        self.seriesRealSpeed.append(1, 2)
+        self.seriesRealSpeed.append(2, 5)
+
+        self.seriesTargetSpeed = QLineSeries()
+        self.seriesTargetSpeed.setName("real")
+        self.seriesTargetSpeed.append(0, 5)
+        self.seriesTargetSpeed.append(1, 5)
+        self.seriesTargetSpeed.append(2, 5)
+
+        speedChart.addSeries(self.seriesRealSpeed)
+        speedChart.addSeries(self.seriesTargetSpeed)
+
+        speedChart.createDefaultAxes()
+        speedChart.axisX().setGridLineVisible(False)
+        speedChart.axisY().setGridLineVisible(False)
+        # speedChart.setTitle("速度及电压")
+
+        # self.speedChart.show()
+
+        sendReceiveLayout.addWidget(self.speedChartView)
+
         sendReceiveLayout.addWidget(self.receiveArea)
         sendReceiveLayout.addWidget(sendWidget)
         sendReceiveLayout.addWidget(self.sendHistory)
+        self.sendHistory.hide()
         sendReceiveLayout.setStretch(0, 7)
         sendReceiveLayout.setStretch(1, 2)
         sendReceiveLayout.setStretch(2, 1)
+        sendReceiveLayout.setStretch(3, 1)
 
         # widgets serial settings
         serialSettingsGroupBox = QGroupBox(parameters.strSerialSettings)
@@ -197,12 +249,12 @@ class MainWindow(QMainWindow):
         self.checkBoxRts = QCheckBox("rts")
         self.checkBoxDtr = QCheckBox("dtr")
         self.serialOpenCloseButton = QPushButton(parameters.strOpen)
-        serialSettingsLayout.addWidget(serialPortLabek, 0, 0)
+        #serialSettingsLayout.addWidget(serialPortLabek, 0, 0)
         serialSettingsLayoutAdvance.addWidget(serailBaudrateLabel, 1, 0)
         serialSettingsLayoutAdvance.addWidget(serailBytesLabel, 2, 0)
         serialSettingsLayoutAdvance.addWidget(serailParityLabel, 3, 0)
         serialSettingsLayoutAdvance.addWidget(serailStopbitsLabel, 4, 0)
-        serialSettingsLayout.addWidget(self.serialPortCombobox, 0, 1)
+        serialSettingsLayout.addWidget(self.serialPortCombobox, 0, 0,1,2)
         serialSettingsLayoutAdvance.addWidget(self.serailBaudrateCombobox, 1, 1)
         serialSettingsLayoutAdvance.addWidget(self.serailBytesCombobox, 2, 1)
         serialSettingsLayoutAdvance.addWidget(self.serailParityCombobox, 3, 1)
@@ -211,12 +263,11 @@ class MainWindow(QMainWindow):
         serialSettingsLayoutAdvance.addWidget(self.checkBoxDtr, 5, 1, 1, 1)
         serialSettingsLayout.addWidget(self.serialOpenCloseButton, 6, 0, 1, 2)
         serialSettingsGroupBox.setLayout(serialSettingsLayout)
-        settingLayout.addWidget(serialSettingsGroupBox)
+        #settingLayout.addWidget(serialSettingsGroupBox)
 
         serialSettingsGroupBoxAdvance.setLayout(serialSettingsLayoutAdvance)
         settingLayout.addWidget(serialSettingsGroupBoxAdvance)
         serialSettingsGroupBoxAdvance.hide()
-
 
         # serial receive settings
         serialReceiveSettingsGroupBox = QGroupBox(parameters.strSerialReceiveSettings)
@@ -255,9 +306,9 @@ class MainWindow(QMainWindow):
         settingLayout.addWidget(serialSendSettingsGroupBox)
         serialSendSettingsGroupBox.hide()
 
-        #settingLayout.setStretch(0, 5)
-        #settingLayout.setStretch(1, 2.5)
-        #settingLayout.setStretch(2, 2.5)
+        # settingLayout.setStretch(0, 5)
+        # settingLayout.setStretch(1, 2.5)
+        # settingLayout.setStretch(2, 2.5)
 
         settingLayout.addStretch(1)
 
@@ -291,6 +342,7 @@ class MainWindow(QMainWindow):
         errorLayout.addStretch(1)
         checkWidgetLayout.addLayout(errorLayout)
 
+        sendFunctionalLayout.addWidget(serialSettingsGroupBox)
         sendFunctionalLayout.addWidget(checkWidget)
 
         runWidget = QGroupBox("运行测试")
@@ -323,7 +375,8 @@ class MainWindow(QMainWindow):
         self.openFileButton = QPushButton("Open File")
         self.sendFileButton = QPushButton("Send File")
         self.clearHistoryButton = QPushButton("Clear History")
-        self.addButton = QPushButton(parameters.strAdd)
+        self.addButton = QPushButton("停止")
+
         fileSendGroupBox = QGroupBox(parameters.strSendFile)
         fileSendGridLayout = QGridLayout()
         fileSendGridLayout.addWidget(self.filePathWidget, 0, 0, 1, 1)
@@ -338,6 +391,8 @@ class MainWindow(QMainWindow):
         sendFunctionalLayout.addStretch(1)
         self.isHideFunctinal = False
         self.showFunctional()
+        self.isHideSettings=True
+        self.hideSettings()
 
         # main window
         self.statusBarStauts = QLabel()
@@ -377,6 +432,7 @@ class MainWindow(QMainWindow):
         self.sendHistory.currentIndexChanged.connect(self.sendHistoryIndexChanged)
         self.settingsButton.clicked.connect(self.showHideSettings)
         self.skinButton.clicked.connect(self.skinChange)
+        self.debug.clicked.connect(self.debugClick)
         self.aboutButton.clicked.connect(self.showAbout)
         self.openFileButton.clicked.connect(self.selectFile)
         self.sendFileButton.clicked.connect(self.sendFile)
@@ -865,6 +921,18 @@ class MainWindow(QMainWindow):
             file = open(self.DataPath + '/assets/qss/style.qss', "r")
             self.param.skin = 1
         self.app.setStyleSheet(file.read().replace("$DataPath", self.DataPath))
+    def debugClick(self):
+        if self.receiveArea.isVisible():
+            self.receiveArea.hide()
+            self.sendArea.hide()
+            self.sendButtion.hide()
+            self.clearReceiveButtion.hide()
+        else:
+            self.receiveArea.show()
+            self.sendArea.show()
+            self.sendButtion.show()
+            self.clearReceiveButtion.hide()
+
 
     def showAbout(self):
         QMessageBox.information(self, "About", "<h1 style='color:#f75a5a';margin=10px;>" + parameters.appName +
