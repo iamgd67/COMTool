@@ -50,6 +50,8 @@ class MainWindow(QMainWindow):
     app = None
     isWaveOpen = False
     receiveBytes = bytearray()
+    cmdSendQuen = []
+    cmdGotRsp = True
 
     def __init__(self, app):
         super().__init__()
@@ -85,6 +87,7 @@ class MainWindow(QMainWindow):
         self.functionalWiget.setMaximumWidth(280)
         settingLayout = QVBoxLayout()
         sendReceiveLayout = QVBoxLayout()
+        infoW = QGroupBox("info")
         sendFunctionalLayout = QVBoxLayout()
         mainLayout = QHBoxLayout()
         self.settingWidget.setLayout(settingLayout)
@@ -132,7 +135,7 @@ class MainWindow(QMainWindow):
         menuLayout.addWidget(self.aboutButton)
         self.aboutButton.hide()
         self.debug = QPushButton("debug")
-        #debug.setProperty("class","menuItem")
+        # debug.setProperty("class","menuItem")
         menuLayout.addWidget(self.debug)
         menuLayout.addStretch(0)
         menuLayout.addWidget(self.encodingCombobox)
@@ -176,18 +179,24 @@ class MainWindow(QMainWindow):
 
         self.seriesRealSpeed = QLineSeries()
         self.seriesRealSpeed.setName("real")
-        self.seriesRealSpeed.append(0, 1)
-        self.seriesRealSpeed.append(1, 2)
-        self.seriesRealSpeed.append(2, 5)
+        self.seriesRealSpeed.append(0, 0)
+        self.seriesRealSpeed.append(1, 3)
+        self.seriesRealSpeed.append(2, 13)
 
         self.seriesTargetSpeed = QLineSeries()
         self.seriesTargetSpeed.setName("real")
-        self.seriesTargetSpeed.append(0, 5)
-        self.seriesTargetSpeed.append(1, 5)
-        self.seriesTargetSpeed.append(2, 5)
+        self.seriesTargetSpeed.append(0, 0)
+        self.seriesTargetSpeed.append(1, 15)
+        self.seriesTargetSpeed.append(2, 15)
+
+        self.seriesPower = QLineSeries()
+        self.seriesPower.append(0, 0)
+        self.seriesPower.append(1, 15)
+        self.seriesPower.append(2, 25)
 
         speedChart.addSeries(self.seriesRealSpeed)
         speedChart.addSeries(self.seriesTargetSpeed)
+        speedChart.addSeries(self.seriesPower)
 
         speedChart.createDefaultAxes()
         speedChart.axisX().setGridLineVisible(False)
@@ -195,15 +204,15 @@ class MainWindow(QMainWindow):
         # speedChart.setTitle("速度及电压")
 
         # self.speedChart.show()
-
+        sendReceiveLayout.addWidget(infoW)
         sendReceiveLayout.addWidget(self.speedChartView)
 
         sendReceiveLayout.addWidget(self.receiveArea)
         sendReceiveLayout.addWidget(sendWidget)
         sendReceiveLayout.addWidget(self.sendHistory)
         self.sendHistory.hide()
-        sendReceiveLayout.setStretch(0, 7)
-        sendReceiveLayout.setStretch(1, 2)
+        sendReceiveLayout.setStretch(0, 1)
+        sendReceiveLayout.setStretch(1, 7)
         sendReceiveLayout.setStretch(2, 1)
         sendReceiveLayout.setStretch(3, 1)
 
@@ -249,12 +258,12 @@ class MainWindow(QMainWindow):
         self.checkBoxRts = QCheckBox("rts")
         self.checkBoxDtr = QCheckBox("dtr")
         self.serialOpenCloseButton = QPushButton(parameters.strOpen)
-        #serialSettingsLayout.addWidget(serialPortLabek, 0, 0)
+        # serialSettingsLayout.addWidget(serialPortLabek, 0, 0)
         serialSettingsLayoutAdvance.addWidget(serailBaudrateLabel, 1, 0)
         serialSettingsLayoutAdvance.addWidget(serailBytesLabel, 2, 0)
         serialSettingsLayoutAdvance.addWidget(serailParityLabel, 3, 0)
         serialSettingsLayoutAdvance.addWidget(serailStopbitsLabel, 4, 0)
-        serialSettingsLayout.addWidget(self.serialPortCombobox, 0, 0,1,2)
+        serialSettingsLayout.addWidget(self.serialPortCombobox, 0, 0, 1, 2)
         serialSettingsLayoutAdvance.addWidget(self.serailBaudrateCombobox, 1, 1)
         serialSettingsLayoutAdvance.addWidget(self.serailBytesCombobox, 2, 1)
         serialSettingsLayoutAdvance.addWidget(self.serailParityCombobox, 3, 1)
@@ -263,7 +272,7 @@ class MainWindow(QMainWindow):
         serialSettingsLayoutAdvance.addWidget(self.checkBoxDtr, 5, 1, 1, 1)
         serialSettingsLayout.addWidget(self.serialOpenCloseButton, 6, 0, 1, 2)
         serialSettingsGroupBox.setLayout(serialSettingsLayout)
-        #settingLayout.addWidget(serialSettingsGroupBox)
+        # settingLayout.addWidget(serialSettingsGroupBox)
 
         serialSettingsGroupBoxAdvance.setLayout(serialSettingsLayoutAdvance)
         settingLayout.addWidget(serialSettingsGroupBoxAdvance)
@@ -315,56 +324,54 @@ class MainWindow(QMainWindow):
         # right functional layout
 
         # self begin
-        checkWidget = QGroupBox("基本检查");
+        self.checkWidget = QGroupBox("基本检查");
         checkWidgetLayout = QVBoxLayout();
-        checkWidget.setLayout(checkWidgetLayout)
+        self.checkWidget.setLayout(checkWidgetLayout)
         checkWidgetLayout.addWidget(QPushButton("check uvwz"))
 
-        setPowerLayout=QHBoxLayout()
+        setPowerLayout = QHBoxLayout()
 
-        setPowerLayout.addWidget(QLineEdit())
+        self.maxPowerEdit=QLineEdit("25");
+        setPowerLayout.addWidget(self.maxPowerEdit)
         setPowerLayout.addWidget(QPushButton("设置最大电压"))
-        setPowerLayout.setStretch(1,1)
-        setPowerLayout.setStretch(2,1)
+        setPowerLayout.setStretch(1, 1)
+        setPowerLayout.setStretch(2, 1)
         checkWidgetLayout.addLayout(setPowerLayout)
 
-
-        infoW=QGroupBox("info")
-        infoWLayout=QVBoxLayout()
+        infoWLayout = QVBoxLayout()
         infoW.setLayout(infoWLayout)
+        infoW.setDisabled(True)
 
-
-
-        signalU = QCheckBox("U")
-        signalV = QCheckBox("V")
-        signalW = QCheckBox("W")
-        signalZ = QCheckBox("Z")
+        self.signalU = QCheckBox("U  ")
+        self.signalV = QCheckBox("V  ")
+        self.signalW = QCheckBox("W  ")
+        self.signalZ = QCheckBox("Z  ")
 
         signalLayout = QHBoxLayout()
-        signalLayout.addWidget(signalU)
-        signalLayout.addWidget(signalV)
-        signalLayout.addWidget(signalW)
-        signalLayout.addWidget(signalZ)
+        signalLayout.addWidget(self.signalU)
+        signalLayout.addWidget(self.signalV)
+        signalLayout.addWidget(self.signalW)
+        signalLayout.addWidget(self.signalZ)
+        signalLayout.addSpacing(30)
+        signalLayout.addWidget(QLabel("机械角度："))
+        self.angle = QLabel("0")
+        signalLayout.addWidget(self.angle)
+        signalLayout.addStretch(1)
 
-        signalWidget = QWidget()
-        signalWidget.setLayout(signalLayout)
-        infoWLayout.addWidget(signalWidget)
-
-        errorLabel = QLabel("未连接")
+        self.errorLabel = QLabel("未连接")
         errorLayout = QHBoxLayout()
         errorLayout.addWidget(QLabel("当前状态："))
-        errorLayout.addWidget(errorLabel)
+        errorLayout.addWidget(self.errorLabel)
         errorLayout.addStretch(1)
         infoWLayout.addLayout(errorLayout)
-
-        sendReceiveLayout.addWidget(infoW)
+        infoWLayout.addLayout(signalLayout)
 
         sendFunctionalLayout.addWidget(serialSettingsGroupBox)
-        sendFunctionalLayout.addWidget(checkWidget)
+        sendFunctionalLayout.addWidget(self.checkWidget)
 
-        runWidget = QGroupBox("运行测试")
+        self.runWidget = QGroupBox("运行测试")
         runWidgetLayout = QVBoxLayout()
-        runWidget.setLayout(runWidgetLayout)
+        self.runWidget.setLayout(runWidgetLayout)
 
         slowLayout = QHBoxLayout()
         midLayout = QHBoxLayout()
@@ -382,9 +389,9 @@ class MainWindow(QMainWindow):
         fastLayout.addWidget(QPushButton("运行"))
         runWidgetLayout.addLayout(fastLayout)
 
-
-        sendFunctionalLayout.addWidget(runWidget)
-        runWidget.setDisabled(True)
+        sendFunctionalLayout.addWidget(self.runWidget)
+        self.runWidget.setDisabled(True)
+        self.checkWidget.setDisabled(True)
 
         # self end
 
@@ -408,7 +415,7 @@ class MainWindow(QMainWindow):
         sendFunctionalLayout.addStretch(1)
         self.isHideFunctinal = False
         self.showFunctional()
-        self.isHideSettings=True
+        self.isHideSettings = True
         self.hideSettings()
 
         # main window
@@ -477,6 +484,7 @@ class MainWindow(QMainWindow):
                 self.receiveProgressStop = True
                 self.com.close()
                 self.setDisableSettingsSignal.emit(False)
+                self.errorLabel.setText("连接断开")
             else:
                 try:
                     self.com.baudrate = int(self.serailBaudrateCombobox.currentText())
@@ -496,10 +504,24 @@ class MainWindow(QMainWindow):
                     self.com.open()
                     # print("open success")
                     # print(self.com)
+                    self.receiveProgressStop = False
                     self.setDisableSettingsSignal.emit(True)
                     self.receiveProcess = threading.Thread(target=self.receiveData)
                     self.receiveProcess.setDaemon(True)
                     self.receiveProcess.start()
+
+                    self.cmdGotRsp = True
+                    self.cmdSendQuen.clear()
+                    self.sendQuenProcess = threading.Thread(target=self.sendQuen)
+                    self.sendQuenProcess.setDaemon(True)
+                    self.sendQuenProcess.start()
+
+                    self.errorLabel.setText("连接成功")
+
+                    self.readStatusCmdGenThread = threading.Thread(target=self.readStatusCmdGen)
+                    self.readStatusCmdGenThread.setDaemon(True)
+                    self.readStatusCmdGenThread.start()
+
                 except Exception as e:
                     self.com.close()
                     self.receiveProgressStop = True
@@ -590,7 +612,8 @@ class MainWindow(QMainWindow):
                         t.setDaemon(True)
                         t.start()
         except Exception as e:
-            self.errorSignal.emit(parameters.strWriteError)
+            self.errorLabel.setText("发送出错" + str(e))
+            # self.errorSignal.emit(parameters.strWriteError)
             # print(e)
 
     def scheduledSend(self):
@@ -603,8 +626,38 @@ class MainWindow(QMainWindow):
                 self.errorSignal.emit(parameters.strTimeFormatError)
         self.isScheduledSending = False
 
+    def readStatusCmdGen(self):
+        while (not self.receiveProgressStop):
+            time.sleep(600)
+            self.cmdSendQuen.append(bytes([0x68, 101, 0x68 ^ 101]))
+            self.cmdSendQuen.append(bytes([0x68, 102, 0x68 ^ 102]))
+            self.cmdSendQuen.append(bytes([0x68, 92, 0x68 ^ 92]))
+            self.cmdSendQuen.append(bytes([0x68, 103, 0x68 ^ 103]))
+            self.cmdSendQuen.append(bytes([0x68, 104, 0x68 ^ 104]))
+            self.cmdSendQuen.append(bytes([0x68, 105, 0x68 ^ 105]))
+            time.sleep(0.3)
+
+    def sendQuen(self):
+        self.timeLastSend = 0
+        while (not self.receiveProgressStop):
+            if not self.cmdGotRsp:
+                if time.time() - self.timeLastSend > 0.5:
+                    self.errorLabel.setText("响应超时")
+                time.sleep(0.1)
+                continue
+            if not self.cmdSendQuen:
+                time.sleep(0.1)
+                continue
+            cmd = self.cmdSendQuen[0]
+            # todo send it
+            self.sendArea.setText(self.asciiB2HexString(cmd))
+            self.cmdGotRsp = False
+            self.sendData()
+            self.timeLastSend = time.time()
+
+            del self.cmdSendQuen[0]
+
     def receiveData(self):
-        self.receiveProgressStop = False
         self.timeLastReceive = 0
         while (not self.receiveProgressStop):
             try:
@@ -638,12 +691,24 @@ class MainWindow(QMainWindow):
                             if self.receiveBytes[0] & 0xF8 == 0x68:
                                 # read cmd
                                 self.receiveUpdateSignal.emit(self.asciiB2HexString(self.receiveBytes[0:5]))
+                                if self.receiveBytes[1] == 101:
+                                    self.signalU.setChecked(self.receiveBytes[3] & 0x1)
+                                    self.signalV.setChecked(self.receiveBytes[3] & 0x2)
+                                    self.signalW.setChecked(self.receiveBytes[3] & 0x4)
+                                    self.signalZ.setChecked(self.receiveBytes[3] & 0x8)
+                                elif self.receiveBytes[1] == 102:
+                                    if self.receiveBytes[3] :
+                                        self.errorLabel.setText("故障代码"+str(self.receiveBytes[3]))
+                                elif self.receiveBytes[1] == 92 :
+                                    self.maxPowerEdit.setText(str(self.receiveBytes[3]))
+
                                 del self.receiveBytes[0:5]
                             elif self.receiveBytes[0] & 0xf8 == 0x90:
                                 # write cmd
                                 self.receiveUpdateSignal.emit(self.asciiB2HexString(self.receiveBytes[0:5]))
                                 del self.receiveBytes[0:5]
                             self.receiveUpdateSignal.emit("\n")
+                            self.cmdGotRsp = True
                     else:
                         self.receiveUpdateSignal.emit(bytesR.decode(self.encodingCombobox.currentText(), "ignore"))
             except Exception as e:
@@ -938,6 +1003,7 @@ class MainWindow(QMainWindow):
             file = open(self.DataPath + '/assets/qss/style.qss', "r")
             self.param.skin = 1
         self.app.setStyleSheet(file.read().replace("$DataPath", self.DataPath))
+
     def debugClick(self):
         if self.receiveArea.isVisible():
             self.receiveArea.hide()
@@ -949,7 +1015,6 @@ class MainWindow(QMainWindow):
             self.sendArea.show()
             self.sendButtion.show()
             self.clearReceiveButtion.hide()
-
 
     def showAbout(self):
         QMessageBox.information(self, "About", "<h1 style='color:#f75a5a';margin=10px;>" + parameters.appName +
