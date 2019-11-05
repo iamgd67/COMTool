@@ -36,7 +36,11 @@ class MyClass(object):
 
 
 class MainWindow(QMainWindow):
+    beginCheckUVWZTime=0
+    foundZ=False
     receiveUpdateSignal = pyqtSignal(str)
+    setSendTextSignal=pyqtSignal(str)
+    updateChartSignal = pyqtSignal()
     errorSignal = pyqtSignal(str)
     showSerialComboboxSignal = pyqtSignal()
     setDisableSettingsSignal = pyqtSignal(bool)
@@ -52,6 +56,7 @@ class MainWindow(QMainWindow):
     receiveBytes = bytearray()
     cmdSendQuen = []
     cmdGotRsp = True
+    I=0
 
     def __init__(self, app):
         super().__init__()
@@ -135,8 +140,10 @@ class MainWindow(QMainWindow):
         menuLayout.addWidget(self.aboutButton)
         self.aboutButton.hide()
         self.debug = QPushButton("debug")
+        self.clearErr=QPushButton("清除错误")
         # debug.setProperty("class","menuItem")
         menuLayout.addWidget(self.debug)
+        menuLayout.addWidget(self.clearErr)
         menuLayout.addStretch(0)
         menuLayout.addWidget(self.encodingCombobox)
         self.encodingCombobox.hide()
@@ -167,15 +174,15 @@ class MainWindow(QMainWindow):
         self.sendButtion.hide()
         self.clearReceiveButtion.hide()
 
-        speedChart = QChart()
-        speedChart.setBackgroundBrush(QBrush(QColor(0x21, 0x21, 0x21)))
-        speedChart.legend().hide()
+        self.speedChart = QChart()
+        self.speedChart.setBackgroundBrush(QBrush(QColor(0x21, 0x21, 0x21)))
+        self.speedChart.legend().hide()
 
         # speedChart.setPlotAreaBackgroundBrush(QBrush(QColor(0x21,0x21,0x21)))
         # speedChart.setPlotAreaBackgroundVisible(True)
 
-        self.speedChartView = QChartView(speedChart)
-        speedChart.setMargins(QMargins(0, 0, 0, 0))
+        self.speedChartView = QChartView(self.speedChart)
+        self.speedChart.setMargins(QMargins(0, 0, 0, 0))
 
         self.seriesRealSpeed = QLineSeries()
         self.seriesRealSpeed.setName("real")
@@ -194,13 +201,15 @@ class MainWindow(QMainWindow):
         self.seriesPower.append(1, 15)
         self.seriesPower.append(2, 25)
 
-        speedChart.addSeries(self.seriesRealSpeed)
-        speedChart.addSeries(self.seriesTargetSpeed)
-        speedChart.addSeries(self.seriesPower)
+        self.I=2;
 
-        speedChart.createDefaultAxes()
-        speedChart.axisX().setGridLineVisible(False)
-        speedChart.axisY().setGridLineVisible(False)
+        self.speedChart.addSeries(self.seriesRealSpeed)
+        self.speedChart.addSeries(self.seriesTargetSpeed)
+        self.speedChart.addSeries(self.seriesPower)
+
+        self.speedChart.createDefaultAxes()
+        self.speedChart.axisX().setGridLineVisible(False)
+        self.speedChart.axisY().setGridLineVisible(False)
         # speedChart.setTitle("速度及电压")
 
         # self.speedChart.show()
@@ -327,13 +336,15 @@ class MainWindow(QMainWindow):
         self.checkWidget = QGroupBox("基本检查");
         checkWidgetLayout = QVBoxLayout();
         self.checkWidget.setLayout(checkWidgetLayout)
-        checkWidgetLayout.addWidget(QPushButton("check uvwz"))
+        self.checkButton=QPushButton("check uvwz")
+        checkWidgetLayout.addWidget(self.checkButton)
 
         setPowerLayout = QHBoxLayout()
 
         self.maxPowerEdit=QLineEdit("25");
         setPowerLayout.addWidget(self.maxPowerEdit)
-        setPowerLayout.addWidget(QPushButton("设置最大电压"))
+        self.setMaxPowerButton=QPushButton("设置最大电压")
+        setPowerLayout.addWidget(self.setMaxPowerButton)
         setPowerLayout.setStretch(1, 1)
         setPowerLayout.setStretch(2, 1)
         checkWidgetLayout.addLayout(setPowerLayout)
@@ -377,16 +388,23 @@ class MainWindow(QMainWindow):
         midLayout = QHBoxLayout()
         fastLayout = QHBoxLayout()
 
-        slowLayout.addWidget(QLineEdit("200"))
-        slowLayout.addWidget(QPushButton("运行"))
+        self.lowSpeed=QLineEdit("200")
+        slowLayout.addWidget(self.lowSpeed)
+        self.lowRunButton=QPushButton("运行")
+        slowLayout.addWidget(self.lowRunButton)
+
 
         runWidgetLayout.addLayout(slowLayout)
-        midLayout.addWidget(QLineEdit("1000"))
-        midLayout.addWidget(QPushButton("运行"))
+        self.midSpeed=QLineEdit("1000")
+        midLayout.addWidget(self.midSpeed)
+        self.midRunButton=QPushButton("运行")
+        midLayout.addWidget(self.midRunButton)
         runWidgetLayout.addLayout(midLayout)
 
-        fastLayout.addWidget(QLineEdit("2000"))
-        fastLayout.addWidget(QPushButton("运行"))
+        self.highSpeed=QLineEdit("2000")
+        fastLayout.addWidget(self.highSpeed)
+        self.highRunButton=QPushButton("运行")
+        fastLayout.addWidget(self.highRunButton)
         runWidgetLayout.addLayout(fastLayout)
 
         sendFunctionalLayout.addWidget(self.runWidget)
@@ -441,10 +459,60 @@ class MainWindow(QMainWindow):
         self.show()
         print("config file path:", parameters.configFilePath)
 
+    def setMaxPower(self):
+        maxPower=int(self.maxPowerEdit.text());
+        self.cmdSendQuen.append(bytes([0x90, 92, 0x00,maxPower , 0x90 ^ 92 ^ 0x00 ^ maxPower]))
+
+    def checkuvwz(self):
+        self.findZ=False
+        self.beginCheckUVWZTime=time.time()
+        self.cmdSendQuen.append(bytes([0x90, 0x65,0x00,0x07,0x90^0x65^0x00^0x07]))
+
+    def stopMotor(self):
+        self.cmdSendQuen.append(bytes([0x90, 0x65, 0x00, 0x00, 0x90 ^ 0x65 ^ 0x00 ^ 0x00]))
+
+
+
+    def updateChart(self):
+        self.speedChart.removeSeries(self.seriesTargetSpeed)
+        self.speedChart.removeSeries(self.seriesRealSpeed)
+        self.speedChart.removeSeries(self.seriesPower)
+        self.speedChart.addSeries(self.seriesTargetSpeed)
+        self.speedChart.addSeries(self.seriesRealSpeed)
+        self.speedChart.addSeries(self.seriesPower)
+
+        self.speedChart.createDefaultAxes()
+        self.speedChart.axisX().setGridLineVisible(False)
+        self.speedChart.axisY().setGridLineVisible(False)
+
+    def runAsSpeed(self, speed):
+        interSpeed = int(speed/43.0)
+        self.cmdSendQuen.append(bytes([0x90, 101, 0, interSpeed, 0x90 ^ 101 ^ interSpeed]))
+
+    def lowRun(self):
+        self.runAsSpeed(int(self.lowSpeed.text()))
+    def midRun(self):
+        self.runAsSpeed(int(self.midSpeed.text()))
+    def highRun(self):
+        self.runAsSpeed(int(self.highSpeed.text()))
+
+    def clearMoterErr(self):
+        self.cmdSendQuen.append(bytes([0x90,101,0,0xFF,0x90^101^0xFF]))
+
     def initEvent(self):
+        self.clearErr.clicked.connect(self.clearMoterErr)
+
+        self.lowRunButton.clicked.connect(self.lowRun)
+        self.midRunButton.clicked.connect(self.midRun)
+        self.highRunButton.clicked.connect(self.highRun)
+
+        self.setMaxPowerButton.clicked.connect(self.setMaxPower)
+        self.checkButton.clicked.connect(self.checkuvwz)
         self.serialOpenCloseButton.clicked.connect(self.openCloseSerial)
         self.sendButtion.clicked.connect(self.sendData)
         self.receiveUpdateSignal.connect(self.updateReceivedDataDisplay)
+        self.setSendTextSignal.connect(self.setSendText)
+        self.updateChartSignal.connect(self.updateChart)
         self.clearReceiveButtion.clicked.connect(self.clearReceiveBuffer)
         self.serialPortCombobox.clicked.connect(self.portComboboxClicked)
         self.sendSettingsHex.clicked.connect(self.onSendSettingsHexClicked)
@@ -461,7 +529,7 @@ class MainWindow(QMainWindow):
         self.openFileButton.clicked.connect(self.selectFile)
         self.sendFileButton.clicked.connect(self.sendFile)
         self.clearHistoryButton.clicked.connect(self.clearHistory)
-        self.addButton.clicked.connect(self.functionAdd)
+        self.addButton.clicked.connect(self.stopMotor)
         self.functionalButton.clicked.connect(self.showHideFunctional)
         self.sendArea.currentCharFormatChanged.connect(self.sendAreaFontChanged)
         # self.waveButton.clicked.connect(self.openWaveDisplay)
@@ -626,22 +694,35 @@ class MainWindow(QMainWindow):
                 self.errorSignal.emit(parameters.strTimeFormatError)
         self.isScheduledSending = False
 
+
+
     def readStatusCmdGen(self):
         while (not self.receiveProgressStop):
-            time.sleep(600)
+            if self.beginCheckUVWZTime > 0 and time.time() - self.beginCheckUVWZTime > 2:
+                if self.foundZ:
+                    self.errorLabel.setText("check pass")
+                else:
+                    self.errorLabel.setText("found z failed")
+                self.runWidget.setDisabled(not self.foundZ)
+                self.stopMotor()
+                self.beginCheckUVWZTime=0
+            while self.cmdSendQuen:
+                time.sleep(1)
+                continue
+            self.I+=1;
             self.cmdSendQuen.append(bytes([0x68, 101, 0x68 ^ 101]))
             self.cmdSendQuen.append(bytes([0x68, 102, 0x68 ^ 102]))
-            self.cmdSendQuen.append(bytes([0x68, 92, 0x68 ^ 92]))
+            #self.cmdSendQuen.append(bytes([0x68, 92, 0x68 ^ 92]))
             self.cmdSendQuen.append(bytes([0x68, 103, 0x68 ^ 103]))
             self.cmdSendQuen.append(bytes([0x68, 104, 0x68 ^ 104]))
             self.cmdSendQuen.append(bytes([0x68, 105, 0x68 ^ 105]))
-            time.sleep(0.3)
+
 
     def sendQuen(self):
         self.timeLastSend = 0
         while (not self.receiveProgressStop):
             if not self.cmdGotRsp:
-                if time.time() - self.timeLastSend > 0.5:
+                if time.time() - self.timeLastSend > 1:
                     self.errorLabel.setText("响应超时")
                 time.sleep(0.1)
                 continue
@@ -649,8 +730,10 @@ class MainWindow(QMainWindow):
                 time.sleep(0.1)
                 continue
             cmd = self.cmdSendQuen[0]
-            # todo send it
-            self.sendArea.setText(self.asciiB2HexString(cmd))
+            cmdstr = self.asciiB2HexString(cmd)
+            self.setSendTextSignal.emit(cmdstr)
+            while not self.sendArea.toPlainText() == cmdstr:
+                time.sleep(0.001)
             self.cmdGotRsp = False
             self.sendData()
             self.timeLastSend = time.time()
@@ -699,13 +782,39 @@ class MainWindow(QMainWindow):
                                 elif self.receiveBytes[1] == 102:
                                     if self.receiveBytes[3] :
                                         self.errorLabel.setText("故障代码"+str(self.receiveBytes[3]))
+                                    else :
+                                        self.checkWidget.setDisabled(False)
                                 elif self.receiveBytes[1] == 92 :
                                     self.maxPowerEdit.setText(str(self.receiveBytes[3]))
+                                elif self.receiveBytes[1] == 105:
+                                    angle=self.receiveBytes[2]*(1<<8)+self.receiveBytes[3]
+                                    if not angle == 0 :
+                                        self.foundZ=True
+                                    self.angle.setText(str(angle))
+                                elif self.receiveBytes[1] == 103:
+                                    # es and power
+                                    self.seriesRealSpeed.append(self.I,self.receiveBytes[3])
+                                    self.seriesPower.append(self.I,self.receiveBytes[2])
+                                    if self.seriesRealSpeed.count() > 50:
+                                        self.seriesRealSpeed.remove(0)
+                                    if self.seriesPower.count() > 50:
+                                        self.seriesPower.remove(0)
+                                elif self.receiveBytes[1] == 104:
+                                    self.seriesTargetSpeed.append(self.I,self.receiveBytes[3])
+                                    if self.seriesTargetSpeed.count() > 50:
+                                        self.seriesTargetSpeed.remove(0)
+
+                                    self.updateChartSignal.emit()
+
 
                                 del self.receiveBytes[0:5]
                             elif self.receiveBytes[0] & 0xf8 == 0x90:
                                 # write cmd
                                 self.receiveUpdateSignal.emit(self.asciiB2HexString(self.receiveBytes[0:5]))
+
+                                if self.receiveBytes[1] == 92 :
+                                    self.maxPowerEdit.setText(str(self.receiveBytes[3]))
+
                                 del self.receiveBytes[0:5]
                             self.receiveUpdateSignal.emit("\n")
                             self.cmdGotRsp = True
@@ -734,6 +843,10 @@ class MainWindow(QMainWindow):
                 self.receiveArea.moveCursor(QTextCursor.End)
         self.statusBarSendCount.setText("%s(bytes):%d" % (parameters.strSend, self.sendCount))
         self.statusBarReceiveCount.setText("%s(bytes):%d" % (parameters.strReceive, self.receiveCount))
+
+    def setSendText(self,str):
+        self.sendArea.setText(str)
+
 
     def onSendSettingsHexClicked(self):
 
