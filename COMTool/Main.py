@@ -793,16 +793,17 @@ class MainWindow(QMainWindow):
                                     self.angle.setText(str(angle))
                                 elif self.receiveBytes[1] == 103:
                                     # es and power
-                                    self.seriesRealSpeed.append(self.I,self.receiveBytes[3])
-                                    self.seriesPower.append(self.I,self.receiveBytes[2])
-                                    if self.seriesRealSpeed.count() > 50:
-                                        self.seriesRealSpeed.remove(0)
+                                    self.seriesPower.append(self.I,self.receiveBytes[3])
                                     if self.seriesPower.count() > 50:
                                         self.seriesPower.remove(0)
                                 elif self.receiveBytes[1] == 104:
+                                    # real and target in rpm/100
+                                    self.seriesRealSpeed.append(self.I, self.receiveBytes[2])
                                     self.seriesTargetSpeed.append(self.I,self.receiveBytes[3])
                                     if self.seriesTargetSpeed.count() > 50:
                                         self.seriesTargetSpeed.remove(0)
+                                    if self.seriesRealSpeed.count() > 50:
+                                        self.seriesRealSpeed.remove(0)
 
                                     self.updateChartSignal.emit()
 
